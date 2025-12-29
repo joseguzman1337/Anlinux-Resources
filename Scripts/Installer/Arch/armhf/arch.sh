@@ -33,11 +33,13 @@ cat > $bin <<- EOM
 echo " "
 echo " "
 echo " "
-echo "If you are first time starting Arch Linux, you should run this command: chmod 755 && ./additional.sh , this will fix the pacman-key and network problem."
+echo "If you are first time starting Arch Linux, you should run this command: chmod 755 additional.sh && ./additional.sh , this will fix the pacman-key and network problem."
 echo " "
 echo " "
 echo " "
 cd \$(dirname \$0)
+pulseaudio --start
+## For rooted user: pulseaudio --start --system
 ## unset LD_PRELOAD in case termux-exec is installed
 unset LD_PRELOAD
 command="proot"
@@ -70,6 +72,23 @@ else
     \$command -c "\$com"
 fi
 EOM
+
+echo "Setting up pulseaudio so you can have music in distro."
+
+pkg install pulseaudio -y
+
+if grep -q "anonymous" ~/../usr/etc/pulse/default.pa;then
+    echo "module already present"
+else
+    echo "load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" >> ~/../usr/etc/pulse/default.pa
+fi
+
+echo "exit-idle-time = -1" >> ~/../usr/etc/pulse/daemon.conf
+echo "Modified pulseaudio timeout to infinite"
+echo "autospawn = no" >> ~/../usr/etc/pulse/client.conf
+echo "Disabled pulseaudio autospawn"
+echo "export PULSE_SERVER=127.0.0.1" >> arch-fs/etc/profile
+echo "Setting Pulseaudio server to 127.0.0.1"
 
 echo "fixing shebang of $bin"
 termux-fix-shebang $bin

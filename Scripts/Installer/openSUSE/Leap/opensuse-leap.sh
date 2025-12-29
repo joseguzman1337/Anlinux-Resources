@@ -16,7 +16,11 @@ if [ "$first" != 1 ];then
 		amd64)
 			archurl="amd64" ;;
 		x86_64)
-			archurl="amd64" ;;	
+			archurl="amd64" ;;
+		i*86)
+			archurl="i386" ;;
+		x86)
+			archurl="i386" ;;	
 		*)
 			echo "unknown architecture"; exit 1 ;;
 		esac
@@ -40,6 +44,8 @@ echo "writing launch script"
 cat > $bin <<- EOM
 #!/bin/bash
 cd \$(dirname \$0)
+pulseaudio --start
+## For rooted user: pulseaudio --start --system
 ## unset LD_PRELOAD in case termux-exec is installed
 unset LD_PRELOAD
 command="proot"
@@ -72,6 +78,23 @@ else
     \$command -c "\$com"
 fi
 EOM
+
+echo "Setting up pulseaudio so you can have music in distro."
+
+pkg install pulseaudio -y
+
+if grep -q "anonymous" ~/../usr/etc/pulse/default.pa;then
+    echo "module already present"
+else
+    echo "load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" >> ~/../usr/etc/pulse/default.pa
+fi
+
+echo "exit-idle-time = -1" >> ~/../usr/etc/pulse/daemon.conf
+echo "Modified pulseaudio timeout to infinite"
+echo "autospawn = no" >> ~/../usr/etc/pulse/client.conf
+echo "Disabled pulseaudio autospawn"
+echo "export PULSE_SERVER=127.0.0.1" >> opensuse-leap-fs/etc/profile
+echo "Setting Pulseaudio server to 127.0.0.1"
 
 echo "fixing shebang of $bin"
 termux-fix-shebang $bin
